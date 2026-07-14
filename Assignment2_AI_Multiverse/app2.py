@@ -1,5 +1,5 @@
 # app.py
-# Main Streamlit Application - Multiple Universes Only
+# Main Streamlit Application - Multiple Universes with Memory Vault
 
 import os
 import streamlit as st
@@ -178,10 +178,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------------------
-# Initialize Session State
+# ✅ TASK 1: Initialize the Memory Vault
 # ----------------------------------------
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    st.session_state.chat_history = []  # Memory Vault!
 if "current_ai" not in st.session_state:
     st.session_state.current_ai = "🤖 Select an AI"
 if "current_personality" not in st.session_state:
@@ -191,7 +191,7 @@ if "current_personality" not in st.session_state:
 # Helper Functions
 # ----------------------------------------
 def add_to_chat(role, content):
-    """Add a message to chat history"""
+    """✅ TASK 4: Add a message to chat history"""
     st.session_state.chat_history.append({
         "role": role,
         "content": content
@@ -242,14 +242,10 @@ st.divider()
 with st.sidebar:
     st.markdown("## 🌌 AI Universes")
     
-    # Prebuilt AI Universes
-    selected_personality = None
-    
     for universe_name, personalities in UNIVERSES.items():
         with st.expander(universe_name, expanded=False):
             for personality_name in personalities.keys():
                 if st.button(f"🤖 {personality_name}", key=f"btn_{personality_name}", use_container_width=True):
-                    selected_personality = personality_name
                     st.session_state.current_ai = personality_name
                     st.session_state.current_personality = personality_name
                     st.rerun()
@@ -274,10 +270,13 @@ with st.sidebar:
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    # Chat History Display
+    # ----------------------------------------
+    # ✅ TASK 2: Render the Chat History
+    # ----------------------------------------
     chat_history = st.session_state.chat_history
     
     if not chat_history:
+        # Show placeholder when no messages
         st.markdown("""
         <div style="text-align: center; padding: 60px 20px; color: #a0a0c0;">
             <h3>💬 Start a Conversation</h3>
@@ -288,41 +287,72 @@ with col1:
         </div>
         """.format(st.session_state.current_ai), unsafe_allow_html=True)
     else:
-        # Display chat messages
-        chat_container = st.container()
-        with chat_container:
-            for msg in chat_history:
-                if msg["role"] == "user":
-                    st.markdown(f"""
-                    <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
-                        <div class="user-message">
-                            <strong>👤 You</strong><br>
-                            {msg['content']}
-                        </div>
+        # Display ALL messages in history
+        for msg in chat_history:
+            if msg["role"] == "user":
+                st.markdown(f"""
+                <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
+                    <div class="user-message">
+                        <strong>👤 You</strong><br>
+                        {msg['content']}
                     </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    ai_name = st.session_state.current_ai
-                    st.markdown(f"""
-                    <div style="display: flex; justify-content: flex-start; margin: 10px 0;">
-                        <div class="ai-message">
-                            <strong>🤖 {ai_name}</strong><br>
-                            {msg['content']}
-                        </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                ai_name = st.session_state.current_ai
+                st.markdown(f"""
+                <div style="display: flex; justify-content: flex-start; margin: 10px 0;">
+                    <div class="ai-message">
+                        <strong>🤖 {ai_name}</strong><br>
+                        {msg['content']}
                     </div>
-                    """, unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
     
-    # User Input
+    # ----------------------------------------
+    # ✅ TASK 3: Upgrade the Input UI (st.chat_input)
+    # ----------------------------------------
     st.divider()
     
     # Check if an AI is selected
     if not st.session_state.current_personality:
         st.warning("⚠️ Please select an AI from the sidebar first!")
-        user_message = st.text_input("💬 Type your message here...", disabled=True, key="user_input")
-        send_button = st.button("🚀 Send", disabled=True, use_container_width=True)
+        user_message = st.chat_input("💬 Type your message here...", disabled=True)
     else:
-        user_message = st.text_input("💬 Type your message here...", key="user_input")
-        send_button = st.button("🚀 Send", use_container_width=True)
+        user_message = st.chat_input("💬 Type your message here...")
+    
+    # ----------------------------------------
+    # ✅ TASK 3 & 4: Process Input with Walrus Operator
+    # ----------------------------------------
+    if user_message:  # Using walrus operator (:=) above
+        # ✅ TASK 4: Save user message to memory
+        add_to_chat("user", user_message)
+        
+        # Get personality prompt
+        personality_prompt = get_personality_prompt(st.session_state.current_personality)
+        prompt = build_predefined_prompt(
+            st.session_state.current_personality,
+            personality_prompt,
+            user_message
+        )
+        
+        # Generate response with loading animation
+        with st.spinner("🌌 Connecting to AI Multiverse..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt
+                )
+                
+                # ✅ TASK 4: Save AI response to memory
+                add_to_chat("ai", response.text)
+                
+                # Rerun to update chat display
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error generating response: {str(e)}")
+                st.info("Please make sure your Gemini API key is valid and you have internet connection.")
 
 with col2:
     # Quick Stats
@@ -336,44 +366,11 @@ with col2:
     st.metric("AI Messages", ai_messages)
 
 # ----------------------------------------
-# Process User Input
-# ----------------------------------------
-if send_button and user_message and user_message.strip():
-    # Add user message to history
-    add_to_chat("user", user_message)
-    
-    # Get personality prompt
-    personality_prompt = get_personality_prompt(st.session_state.current_personality)
-    prompt = build_predefined_prompt(
-        st.session_state.current_personality,
-        personality_prompt,
-        user_message
-    )
-    
-    # Generate response with loading animation
-    with st.spinner("🌌 Connecting to AI Multiverse..."):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            
-            # Add AI response to chat
-            add_to_chat("ai", response.text)
-            
-            # Rerun to update chat display
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Error generating response: {str(e)}")
-            st.info("Please make sure your Gemini API key is valid and you have internet connection.")
-
-# ----------------------------------------
 # Footer
 # ----------------------------------------
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9rem; padding: 10px;">
-    🌌 AI Multiverse — Built with Streamlit & Gemini AI
+    🌌 AI Multiverse — Built with Streamlit & Gemini AI | 📚 Memory Vault Active
 </div>
 """, unsafe_allow_html=True)
