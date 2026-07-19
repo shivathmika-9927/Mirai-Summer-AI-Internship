@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+
+# Streamlit Secrets
+.streamlit/secrets.toml
+
+# Generated Images
+*.png
+!assets/*.png
+!screenshots/*.png
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+
+# Operating System
+.DS_Store
+Thumbs.db
